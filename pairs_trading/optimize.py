@@ -53,12 +53,14 @@ def optimize_pair_thresholds(
         constraint (caller should fall back to defaults).
     """
     # Estimate hedge ratio on formation period
-    beta = compute_hedge_ratio(prices, ticker_a, ticker_b, formation_start, formation_end)
+    beta, alpha = compute_hedge_ratio(
+        prices, ticker_a, ticker_b, formation_start, formation_end,
+    )
 
     # Compute spread and z-score over the range needed
     spread_start = max(0, training_start - rolling_window)
     spread_prices = prices.iloc[spread_start:training_end]
-    spread = compute_spread(spread_prices, ticker_a, ticker_b, beta)
+    spread = compute_spread(spread_prices, ticker_a, ticker_b, beta, alpha)
     zscore = compute_zscore(spread, rolling_window)
 
     # Restrict to training window

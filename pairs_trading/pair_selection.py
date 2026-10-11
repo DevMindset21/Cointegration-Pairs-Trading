@@ -238,11 +238,12 @@ def profit_to_cost_ratio(
     ticker_a: str,
     ticker_b: str,
     beta: float,
-    formation_start: int,
-    formation_end: int,
-    theta_in: float,
-    theta_out: float,
-    transaction_cost: float,
+    alpha: float = 0.0,
+    formation_start: int = None,
+    formation_end: int = None,
+    theta_in: float = 0.0,
+    theta_out: float = 0.0,
+    transaction_cost: float = 0.0,
 ) -> float:
     """
     Expected profit per round trip relative to round-trip cost.
@@ -261,7 +262,7 @@ def profit_to_cost_ratio(
     """
     a = prices[ticker_a].iloc[formation_start:formation_end]
     b = prices[ticker_b].iloc[formation_start:formation_end]
-    spread = (a - beta * b).dropna()
+    spread = (a - alpha - beta * b).dropna()
     if len(spread) < 2:
         return 0.0
 

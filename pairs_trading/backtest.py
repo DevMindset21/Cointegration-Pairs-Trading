@@ -152,13 +152,15 @@ def backtest_pair(
     dict with keys: ticker_a, ticker_b, beta, metrics, trade_results
     """
     # Estimate hedge ratio on formation period only (PIT)
-    beta = compute_hedge_ratio(prices, ticker_a, ticker_b, formation_start, formation_end)
+    beta, alpha = compute_hedge_ratio(
+        prices, ticker_a, ticker_b, formation_start, formation_end,
+    )
 
     # Compute spread over the full range needed for rolling z-score
     # We need rolling_window days before trading_start for the z-score to be valid
     spread_start = max(0, trading_start - rolling_window)
     spread_prices = prices.iloc[spread_start:trading_end]
-    spread = compute_spread(spread_prices, ticker_a, ticker_b, beta)
+    spread = compute_spread(spread_prices, ticker_a, ticker_b, beta, alpha)
     zscore = compute_zscore(spread, rolling_window)
 
     # Restrict signals and returns to trading period only
@@ -313,20 +315,22 @@ def rolling_backtest(
                 continue
 
             try:
-                beta = compute_hedge_ratio(
-                    prices, ticker_a, ticker_b, formation_start, formation_end
+                beta, alpha = compute_hedge_ratio(
+                    prices, ticker_a, ticker_b, formation_start, formation_end,
                 )
 
                 if half_life_range is not None:
                     formation_prices = prices.iloc[formation_start:formation_end]
-                    spread = compute_spread(formation_prices, ticker_a, ticker_b, beta)
+                    spread = compute_spread(
+                        formation_prices, ticker_a, ticker_b, beta, alpha,
+                    )
                     hl = estimate_half_life(spread)
                     if not (half_life_range[0] <= hl <= half_life_range[1]):
                         continue
 
                 if min_profit_cost_ratio > 0:
                     ratio = profit_to_cost_ratio(
-                        prices, ticker_a, ticker_b, beta,
+                        prices, ticker_a, ticker_b, beta, alpha,
                         formation_start, formation_end,
                         theta_in, theta_out, transaction_cost,
                     )

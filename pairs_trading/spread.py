@@ -14,9 +14,10 @@ def compute_hedge_ratio(
     ticker_b: str,
     start: int = None,
     end: int = None,
-) -> float:
+) -> tuple[float, float]:
     """
-    Estimate the hedge ratio (beta) via OLS regression: A = alpha + beta * B.
+    Estimate the hedge ratio and intercept via OLS regression:
+    A = alpha + beta * B.
 
     Parameters
     ----------
@@ -33,8 +34,8 @@ def compute_hedge_ratio(
 
     Returns
     -------
-    float
-        OLS hedge ratio (beta).
+    tuple[float, float]
+        OLS hedge ratio (beta) and intercept (alpha).
     """
     if start is not None and end is not None:
         a = prices[ticker_a].iloc[start:end].values
@@ -49,8 +50,9 @@ def compute_hedge_ratio(
 
     b_const = add_constant(b)
     model = OLS(a, b_const).fit()
+    alpha = model.params[0]
     beta = model.params[1]
-    return beta
+    return beta, alpha
 
 
 def compute_spread(
@@ -58,9 +60,10 @@ def compute_spread(
     ticker_a: str,
     ticker_b: str,
     beta: float,
+    alpha: float,
 ) -> pd.Series:
     """
-    Compute the spread: Z_t = Price_A - beta * Price_B.
+    Compute the spread: Z_t = Price_A - alpha - beta * Price_B.
 
     Parameters
     ----------
@@ -72,13 +75,15 @@ def compute_spread(
         Second ticker.
     beta : float
         Hedge ratio from OLS regression.
+    alpha : float
+        Intercept from the OLS regression.
 
     Returns
     -------
     pd.Series
         Spread time series.
     """
-    spread = prices[ticker_a] - beta * prices[ticker_b]
+    spread = prices[ticker_a] - alpha - beta * prices[ticker_b]
     spread.name = f"{ticker_a}-{ticker_b}_spread"
     return spread
 
@@ -172,12 +177,15 @@ def compute_pair_spread_and_zscore(
     -------
     dict with keys: beta, spread, zscore
     """
-    beta = compute_hedge_ratio(prices, ticker_a, ticker_b, formation_start, formation_end)
-    spread = compute_spread(prices, ticker_a, ticker_b, beta)
+    beta, alpha = compute_hedge_ratio(
+        prices, ticker_a, ticker_b, formation_start, formation_end,
+    )
+    spread = compute_spread(prices, ticker_a, ticker_b, beta, alpha)
     zscore = compute_zscore(spread, rolling_window)
 
     return {
         "beta": beta,
+        "alpha": alpha,
         "spread": spread,
         "zscore": zscore,
     }
